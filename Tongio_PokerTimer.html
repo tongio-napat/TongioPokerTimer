@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Timer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Keyframes for the blinking border animation */
+        @keyframes blink-red-border {
+            0%, 100% { border-color: theme('colors.red.500'); } /* Red border */
+            50% { border-color: transparent; } /* Transparent border for blinking effect */
+        }
+
+        /* Class to apply the blinking animation */
+        .blink-border-red {
+            animation: blink-red-border 0.7s infinite alternate; /* 0.7s duration, infinite loop, alternates direction */
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-800 to-indigo-900 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-md text-center border-4 border-purple-600">
+        <h1 class="text-white text-4xl sm:text-5xl font-extrabold mb-8 drop-shadow-lg">
+            Poker Timer
+        </h1>
+
+        <!-- Timer Display - Initial border color is green-500 -->
+        <div id="timerDisplay" class="text-green-400 text-7xl sm:text-8xl font-mono mb-12 bg-gray-900 py-6 rounded-2xl border-2 border-green-500 shadow-inner flex items-center justify-center">
+            30
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="flex flex-col sm:flex-row justify-center gap-6">
+            <button id="toggleButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transform transition-transform duration-200 ease-in-out active:scale-95 text-xl sm:text-2xl flex items-center justify-center space-x-2">
+                <svg id="playIcon" class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                <svg id="pauseIcon" class="w-8 h-8 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <span id="buttonText">เริ่ม</span>
+            </button>
+            <button id="resetButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transform transition-transform duration-200 ease-in-out active:scale-95 text-xl sm:text-2xl flex items-center justify-center space-x-2">
+                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.569 1 1 0 11-1.885.635A5.002 5.002 0 005 7V5a1 1 0 01-2 0V3a1 1 0 011-1zm.94 9.098a5.002 5.002 0 009.192 0 1 1 0 111.7.674 7.002 7.002 0 01-12.593.293 1 1 0 01.673-1.7z" clip-rule="evenodd"></path></svg>
+                <span>รีเซ็ต</span>
+            </button>
+            <!-- New Add Time Button - Moved to the end -->
+            <button id="addTimeButton" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transform transition-transform duration-200 ease-in-out active:scale-95 text-xl sm:text-2xl flex items-center justify-center space-x-2">
+                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                <span>+30s</span>
+            </button>
+        </div>
+
+        <!-- Simple Message Box for alerts -->
+        <div id="messageBox" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+            <div class="bg-gray-700 p-6 rounded-lg shadow-xl text-center max-w-sm w-full">
+                <p id="messageText" class="text-white text-lg mb-6"></p>
+                <button id="messageBoxCloseButton" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-5 rounded-lg text-base">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for timer and state
+        let timerInterval; // Stores the interval ID for the countdown
+        let timeLeft = 30; // Initial time in seconds
+        let isRunning = false; // Flag to check if the timer is running
+
+        // Get DOM elements
+        const timerDisplay = document.getElementById('timerDisplay');
+        const toggleButton = document.getElementById('toggleButton');
+        const resetButton = document.getElementById('resetButton');
+        const addTimeButton = document.getElementById('addTimeButton'); // Get Add Time button
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const buttonText = document.getElementById('buttonText');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const messageBoxCloseButton = document.getElementById('messageBoxCloseButton');
+
+        // Function to show a custom message box instead of alert()
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        // Event listener for closing the message box
+        messageBoxCloseButton.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+
+        // Function to update the timer display and apply visual warnings
+        function updateDisplay() {
+            timerDisplay.textContent = timeLeft;
+
+            // Clear all previous dynamic classes for text and border colors, and animation
+            timerDisplay.classList.remove('text-green-400', 'text-red-400', 'text-orange-400', 'text-yellow-400');
+            timerDisplay.classList.remove('border-green-500', 'border-red-500', 'border-orange-500');
+            timerDisplay.classList.remove('blink-border-red'); // Remove blinking class
+
+            // Apply default or warning styles based on time left
+            if (timeLeft <= 5 && timeLeft > 0) {
+                // Last 5 seconds: Red text, red border, and blinking
+                timerDisplay.classList.add('text-red-400', 'border-red-500', 'blink-border-red');
+            } else if (timeLeft <= 10 && timeLeft > 0) {
+                // Last 10 seconds: Orange text, orange border, and blinking
+                timerDisplay.classList.add('text-orange-400', 'border-orange-500', 'blink-border-red');
+            } else if (timeLeft === 0) {
+                // Time's up: Yellow text, keep default border or set to yellow
+                timerDisplay.classList.add('text-yellow-400', 'border-green-500'); // Keeping green border when time is up
+            } else {
+                // Default: Green text, green border
+                timerDisplay.classList.add('text-green-400', 'border-green-500');
+            }
+        }
+
+        // Function to start the countdown
+        function startTimer() {
+            if (isRunning) return; // Prevent multiple intervals
+            isRunning = true;
+            // Update button style to indicate running state
+            toggleButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            toggleButton.classList.add('bg-orange-600', 'hover:bg-orange-700');
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            buttonText.textContent = 'หยุด';
+
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                } else {
+                    clearInterval(timerInterval);
+                    isRunning = false; // Timer finished
+                    // Reset button style
+                    toggleButton.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+                    toggleButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                    buttonText.textContent = 'เริ่ม';
+                    showMessageBox("หมดเวลา!"); // Notify user when time runs out
+                }
+                updateDisplay(); // Always update display
+            }, 1000); // Update every second
+        }
+
+        // Function to pause the countdown
+        function pauseTimer() {
+            clearInterval(timerInterval); // Stop the interval
+            isRunning = false;
+            // Reset button style
+            toggleButton.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+            toggleButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+            buttonText.textContent = 'เริ่ม';
+        }
+
+        // Function to reset the timer
+        function resetTimer() {
+            pauseTimer(); // Stop the timer if it's running
+            timeLeft = 30; // Reset time to initial value
+            updateDisplay(); // Update display immediately
+        }
+
+        // Event listener for the toggle (start/pause) button
+        toggleButton.addEventListener('click', () => {
+            if (isRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        });
+
+        // Event listener for the reset button
+        resetButton.addEv
